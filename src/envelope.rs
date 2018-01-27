@@ -5,7 +5,7 @@ use futures::sync::oneshot::Sender as SyncSender;
 
 use fut::ActorFuture;
 use actor::{Actor, AsyncContext};
-use handler::{Handler, ResponseType, IntoResponse};
+use handler::{Handler, ResponseType, IntoResponse, MessageResult};
 use message::Response;
 use context::Context;
 
@@ -14,11 +14,22 @@ use context::Context;
 pub trait ToEnvelope<A: Actor>
 {
     /// Pack message into suitable envelope
-    fn pack<M>(msg: M, tx: Option<SyncSender<Result<M::Item, M::Error>>>,
-               cancel_on_drop: bool) -> Envelope<A>
+    #[doc(hidden)]
+    #[deprecated(since="0.4.6", note="Use pack_msg")]
+    fn pack<M>(msg: M, tx: Option<SyncSender<Result<M::Item, M::Error>>>, _: bool) -> Envelope<A>
         where A: Handler<M>,
               M: ResponseType + Send + 'static,
-              M::Item: Send, M::Error: Send;
+              M::Item: Send, M::Error: Send {
+        Self::pack_msg(msg, tx)
+    }
+
+    fn pack_msg<M>(msg: M, tx: Option<SyncSender<Result<M::Item, M::Error>>>) -> Envelope<A>
+        where A: Handler<M>,
+              M: ResponseType + Send + 'static,
+              M::Item: Send, M::Error: Send {
+        #[allow(deprecated)]
+        Self::pack(msg, tx, true)
+    }
 }
 
 impl<A> ToEnvelope<A> for Context<A>
@@ -35,6 +46,18 @@ impl<A> ToEnvelope<A> for Context<A>
                            tx: tx,
                            act: PhantomData,
                            cancel_on_drop: cancel_on_drop}))
+    }
+
+    fn pack_msg<M>(msg: M, tx: Option<SyncSender<Result<M::Item, M::Error>>>) -> Envelope<A>
+        where A: Handler<M>,
+              M: ResponseType + 'static,
+              M::Item: Send, M::Error: Send,
+    {
+        Envelope(Box::new(
+            RemoteEnvelope{msg: Some(msg),
+                           tx: tx,
+                           act: PhantomData,
+                           cancel_on_drop: true}))
     }
 }
 
@@ -130,6 +153,16 @@ impl<A, M> RemoteEnvelope<A, M> where A: Actor, M: ResponseType {
                        tx: tx,
                        act: PhantomData,
                        cancel_on_drop: cancel_on_drop}
+    }
+
+    pub fn envelope(msg: M, tx: Option<SyncSender<MessageResult<M>>>) -> RemoteEnvelope<A, M>
+        where A: Handler<M>,
+              M: Send + 'static, M::Item: Send, M::Item: Send
+    {
+        RemoteEnvelope{msg: Some(msg),
+                       tx: tx,
+                       act: PhantomData,
+                       cancel_on_drop: true}
     }
 }
 

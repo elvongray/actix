@@ -166,6 +166,16 @@ impl<A> ToEnvelope<A> for SyncContext<A>
     {
         Envelope::new(SyncEnvelope::new(msg, tx, cancel_on_drop))
     }
+
+    fn pack_msg<M>(msg: M,
+                   tx: Option<SyncSender<Result<M::Item, M::Error>>>) -> Envelope<A>
+        where A: Handler<M>,
+              M: ResponseType + Send + 'static,
+              M::Item: Send,
+              M::Error: Send
+    {
+        Envelope::new(SyncEnvelope::new(msg, tx, true))
+    }
 }
 
 enum SyncContextProtocol<A> where A: Actor<Context=SyncContext<A>> {

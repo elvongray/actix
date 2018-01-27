@@ -1,5 +1,10 @@
 # CHANGES
 
+## 0.4.6 (2018-xx-xx)
+
+* Forward 0.5 compatibility
+
+
 ## 0.4.5 (2018-01-23)
 
 * Refactor context implementation

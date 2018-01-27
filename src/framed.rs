@@ -42,6 +42,15 @@ impl<A> ToEnvelope<A> for FramedContext<A>
               M::Item: Send, M::Error: Send {
         Envelope::new(RemoteEnvelope::new(msg, tx, cancel_on_drop))
     }
+
+    #[inline]
+    fn pack_msg<M>(msg: M,
+                   tx: Option<SyncSender<Result<M::Item, M::Error>>>) -> Envelope<A>
+        where M: ResponseType + Send + 'static,
+              A: Handler<M> + FramedActor + Actor<Context=FramedContext<A>>,
+              M::Item: Send, M::Error: Send {
+        Envelope::new(RemoteEnvelope::new(msg, tx, true))
+    }
 }
 
 impl<A> ActorContext for FramedContext<A>

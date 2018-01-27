@@ -22,7 +22,9 @@ pub enum ContextProtocol<A: Actor> {
 }
 
 pub trait AsyncContextApi<A> where A: Actor, A::Context: AsyncContext<A> {
-    fn unsync_sender(&mut self) -> unsync::UnboundedSender<ContextProtocol<A>>;
+    fn unsync_sender(&mut self) -> unsync::UnboundedSender<ContextProtocol<A>> {
+        unreachable!();
+    }
 
     fn unsync_address(&mut self) -> Address<A>;
 
@@ -78,11 +80,6 @@ impl<A> AsyncContext<A> for Context<A> where A: Actor<Context=Self> {
 
 #[doc(hidden)]
 impl<A> AsyncContextApi<A> for Context<A> where A: Actor<Context=Self> {
-
-    #[inline]
-    fn unsync_sender(&mut self) -> unsync::UnboundedSender<ContextProtocol<A>> {
-        self.inner.unsync_sender()
-    }
 
     #[inline]
     fn unsync_address(&mut self) -> Address<A> {
@@ -157,6 +154,11 @@ impl<A> Context<A> where A: Actor<Context=Self> {
     #[inline]
     pub(crate) fn into_inner(self) -> A {
         self.inner.into_inner().unwrap()
+    }
+
+    #[inline]
+    pub(crate) fn unsync_sender(&mut self) -> unsync::UnboundedSender<ContextProtocol<A>> {
+        self.inner.unsync_sender()
     }
 }
 
