@@ -38,6 +38,7 @@ pub struct ContextImpl<A> where A: Actor, A::Context: AsyncContext<A> {
     wait: SmallVec<[ActorWaitItem<A>; 2]>,
     items: SmallVec<[Item<A>; 3]>,
     handle: SpawnHandle,
+    curr_handle: SpawnHandle,
 }
 
 impl<A> ContextImpl<A> where A: Actor, A::Context: AsyncContext<A> + AsyncContextApi<A>
@@ -51,6 +52,7 @@ impl<A> ContextImpl<A> where A: Actor, A::Context: AsyncContext<A> + AsyncContex
             flags: ContextFlags::RUNNING,
             handle: SpawnHandle::default(),
             address: ContextAddress::default(),
+            curr_handle: SpawnHandle::default(),
         }
     }
 
@@ -63,6 +65,7 @@ impl<A> ContextImpl<A> where A: Actor, A::Context: AsyncContext<A> + AsyncContex
             flags: ContextFlags::RUNNING,
             handle: SpawnHandle::default(),
             address: ContextAddress::new(rx),
+            curr_handle: SpawnHandle::default(),
         }
     }
 
@@ -122,6 +125,12 @@ impl<A> ContextImpl<A> where A: Actor, A::Context: AsyncContext<A> + AsyncContex
         } else {
             ActorState::Started
         }
+    }
+
+    #[inline]
+    /// Handle of the running future
+    pub fn curr_handle(&self) -> SpawnHandle {
+        self.curr_handle
     }
 
     #[inline]
@@ -250,6 +259,7 @@ impl<A> ContextImpl<A> where A: Actor, A::Context: AsyncContext<A> + AsyncContex
             // process items
             let mut idx = 0;
             while idx < self.items.len() {
+                self.curr_handle = self.items[idx].0;
                 match self.items[idx].1.poll(act, ctx) {
                     Ok(Async::NotReady) => {
                         // item scheduled wait future
@@ -275,6 +285,7 @@ impl<A> ContextImpl<A> where A: Actor, A::Context: AsyncContext<A> + AsyncContex
                     },
                 }
             }
+            self.curr_handle = SpawnHandle::default();
 
             // ContextFlags::MODIFIED indicates that new IO item has
             // been added during poll process
